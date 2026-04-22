@@ -348,7 +348,7 @@ def render_table(block: Block, class_name: str = "") -> str:
     first_row_text = [strip_tags(cell).strip() for cell in rows[0]]
     has_header = len(rows) > 1 and len(set(first_row_text)) == len(first_row_text)
     body_rows = rows[1:] if has_header else rows
-    headers = first_row_text if has_header else [f"列{i + 1}" for i in range(max_cols)]
+    headers = first_row_text if has_header else [""] * max_cols
 
     table_class = f' class="{html.escape(class_name)}"' if class_name else ""
     parts = [f'<div class="table-shell"><div class="table-scroll"><table{table_class}>']
@@ -364,7 +364,7 @@ def render_table(block: Block, class_name: str = "") -> str:
         row_class = ' class="platform-row"' if is_platform else ""
         parts.append(f"<tr{row_class}>")
         for idx, cell in enumerate(row):
-            label = html.escape(headers[idx] if idx < len(headers) else f"列{idx + 1}")
+            label = html.escape(headers[idx] if idx < len(headers) else "")
             colspan = f' colspan="{max_cols}"' if is_platform and idx == 0 else ""
             if is_platform and idx > 0:
                 continue
@@ -406,6 +406,61 @@ def render_generic_blocks(blocks: list[Block], table_class: str = "") -> str:
     return "\n".join(parts)
 
 
+def is_marker_heading(text: str) -> bool:
+    return bool(re.match(r"^（[一二三四五六七八九十]+）", text.strip()))
+
+
+def render_structured_blocks(blocks: list[Block], table_class: str = "") -> str:
+    parts: list[str] = []
+    loose_blocks: list[Block] = []
+    card_heading: Block | None = None
+    card_blocks: list[Block] = []
+
+    def flush_loose() -> None:
+        nonlocal loose_blocks
+        if loose_blocks:
+            parts.append(render_generic_blocks(loose_blocks, table_class))
+            loose_blocks = []
+
+    def flush_card() -> None:
+        nonlocal card_heading, card_blocks
+        if card_heading is None:
+            return
+        level = 4 if re.match(r"^\d+[、.．]\s*", card_heading.text) else min(
+            max(card_heading.level, 3), 4
+        )
+        body_html = render_generic_blocks(card_blocks, table_class)
+        parts.append('<article class="detail-card">')
+        parts.append(f"<h{level}>{html.escape(card_heading.text)}</h{level}>")
+        if body_html:
+            parts.append(body_html)
+        parts.append("</article>")
+        card_heading = None
+        card_blocks = []
+
+    for block in blocks:
+        if block.kind == "heading":
+            if is_marker_heading(block.text):
+                flush_card()
+                flush_loose()
+                parts.append(f'<h3 class="topic-marker">{html.escape(block.text)}</h3>')
+                continue
+            flush_card()
+            flush_loose()
+            card_heading = block
+            card_blocks = []
+            continue
+
+        if card_heading is None:
+            loose_blocks.append(block)
+        else:
+            card_blocks.append(block)
+
+    flush_card()
+    flush_loose()
+    return "\n".join(parts)
+
+
 def render_overview_blocks(blocks: list[Block]) -> str:
     cards: list[str] = []
     pending: list[str] = []
@@ -427,7 +482,6 @@ def render_overview_blocks(blocks: list[Block]) -> str:
                     '<article class="stat-card">'
                     f'<span class="stat-label">{html.escape(label)}</span>'
                     f'<p class="stat-value">{html.escape(value.strip())}</p>'
-                    f'<p class="stat-raw">{html.escape(text)}</p>'
                     "</article>"
                 )
             else:
@@ -508,16 +562,23 @@ def render_gallery_blocks(blocks: list[Block]) -> str:
     return "\n".join(parts)
 
 
+def normalize_section_heading(heading: str) -> str:
+    normalized = re.sub(r"^[一二三四五六七八九十\d]+[、.．]\s*", "", heading).strip()
+    normalized = re.sub(r"（[^）]{0,12}篇）$", "", normalized).strip()
+    return normalized
+
+
 def section_body_for_heading(heading: str, body: list[Block]) -> str:
-    if heading == "全网信息总览":
+    normalized = normalize_section_heading(heading)
+    if normalized in {"全网信息总览", "故宫数据快览"}:
         return render_overview_blocks(body)
-    if heading in {"今日关注", "其他信息", "AI侵权", "参考消息"}:
+    if normalized in {"今日关注", "其他信息", "AI侵权", "参考消息", "可能性传播点趋势预判"}:
         return render_story_blocks(body)
-    if heading == "商业/IP":
+    if normalized.startswith("商业/IP"):
         return render_generic_blocks(body, "catalogue-table")
-    if "图集" in heading or "图片合集" in heading:
+    if "图集" in normalized or "图片合集" in normalized:
         return render_gallery_blocks(body)
-    return render_generic_blocks(body)
+    return render_structured_blocks(body)
 
 
 def render_content(blocks: list[Block], headings: list[tuple[str, str, int]]) -> str:
@@ -602,7 +663,6 @@ def render_html(title: str, blocks: list[Block]) -> str:
         </div>
         <div class="hero-grid">
           <div class="hero-copy">
-            <span class="eyebrow">{escaped_title}</span>
             <h1>{escaped_title}</h1>
           </div>
           <div class="hero-meta">
@@ -705,6 +765,7 @@ figure { margin: 0; }
   display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .74fr);
   gap: 36px; align-items: end; min-height: calc(100svh - 190px); padding-top: 68px;
 }
+.hero-copy { min-width: 0; }
 .hero-copy h1 {
   margin: 0; font-size: clamp(3.35rem, 7.8vw, 6.75rem);
   line-height: .96; letter-spacing: -.04em; color: #fff8ef;
@@ -745,6 +806,33 @@ figure { margin: 0; }
 .section h4 { margin: 0; font-size: 1.22rem; }
 .section-header { display: grid; gap: 10px; margin-bottom: 22px; }
 .section p { margin: 0 0 1em; color: var(--ink-soft); }
+.topic-marker {
+  margin: 8px 0 18px;
+  color: var(--ink);
+  font-size: clamp(1.75rem, 2.6vw, 2.35rem);
+}
+.detail-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 22px;
+  border-radius: 26px;
+  background: linear-gradient(160deg, rgba(255,255,255,.9), rgba(246,238,224,.9));
+  border: 1px solid rgba(111,74,43,.12);
+  box-shadow: 0 16px 34px rgba(88,54,29,.06);
+}
+.detail-card:first-child { margin-top: 0; }
+.topic-marker + .detail-card { margin-top: 18px; }
+.detail-card h3,
+.detail-card h4 { margin: 0 0 6px; color: var(--ink); }
+.detail-card > p:last-child,
+.detail-card > .detail-line:last-child,
+.detail-card > .table-shell:last-child,
+.detail-card > .image-block:last-child { margin-bottom: 0; }
+.detail-card > .detail-line:first-of-type,
+.detail-card > p:first-of-type,
+.detail-card > .table-shell:first-of-type,
+.detail-card > .image-block:first-of-type { margin-top: 8px; }
 .detail-line {
   display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px;
   align-items: start; margin: 0 0 12px;
@@ -778,7 +866,6 @@ figure { margin: 0; }
   margin: 0; color: inherit; font-size: clamp(1.35rem, 2.3vw, 2.35rem);
   line-height: 1.16; font-weight: 700;
 }
-.stat-raw { margin: 0; color: inherit; opacity: .78; font-size: .95rem; }
 .platform-card p { margin: 0; color: inherit; }
 .story-grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px;
@@ -863,6 +950,8 @@ td p { margin: 0; color: inherit; }
   .detail-line { grid-template-columns: 1fr; gap: 4px; }
   .stat-card { min-height: 0; padding: 18px; border-radius: 22px; }
   .story-card { padding: 18px; border-radius: 22px; }
+  .detail-card { gap: 12px; padding: 18px; border-radius: 22px; }
+  .topic-marker { margin: 2px 0 20px; font-size: clamp(1.55rem, 8.5vw, 2.05rem); }
   .image-gallery { gap: 14px; }
   .image-gallery img { height: auto; max-height: none; }
   .table-shell { overflow: visible; background: transparent; border: 0; }
@@ -875,6 +964,7 @@ td p { margin: 0; color: inherit; }
   td { padding: 12px 14px; border-bottom: 1px solid rgba(111,74,43,.1); }
   td:last-child { border-bottom: 0; }
   td::before { content: attr(data-label); display: block; margin-bottom: 6px; color: var(--accent); font-size: 12px; letter-spacing: .12em; }
+  td[data-label=""]::before { content: none; display: none; }
   .platform-row td { border-bottom: 0; background: rgba(239,226,201,.88); }
   td img { width: min(100%, 260px); border-radius: 18px; }
   .catalogue-table tbody { gap: 16px; }

@@ -21,13 +21,16 @@ The HTML must be a standalone report page using the Gugong visual language: warm
 ## Required Layout Components
 
 - `全网信息总览`: render as compact statistic cards, not plain paragraphs.
+- Overview statistic cards should show each metric once. Do not repeat the original raw sentence under the formatted value.
 - `今日关注`, `其他信息`, `AI侵权`, `参考消息`: render title/source/summary/image groups as event cards.
 - `商业/IP`: render Word tables as compact commercial tables that become card-like rows on mobile.
 - `图片合集` or image-heavy sections: render extracted images as a responsive gallery grid.
 - Keep the visual rhythm close to the standard template: rounded cards, warm translucent surfaces, deep red labels, and tight mobile spacing.
+- Avoid duplicate title presentation in the hero area. The main report title should not be echoed twice as both a label and the primary heading.
 - Images must show in full by default. Do not crop screenshots or product images with `object-fit: cover`; use full-image display rules unless the user explicitly asks for cropping.
 - Subheadings under a section must stay visually grouped with their parent section instead of creating empty standalone sections.
 - On mobile, report content must be visible without relying on scroll-triggered reveal classes. Decorative reveal animations may be disabled on mobile to avoid hidden late-page content.
+- When a Word table has no real header row, do not invent generic mobile labels such as `列1` or `列2`. Show only labels that genuinely exist in the source content.
 
 ## Non-Negotiable Content Rules
 
