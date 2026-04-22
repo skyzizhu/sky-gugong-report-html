@@ -1,0 +1,8 @@
+interface:
+  display_name: "Gugong Report HTML"
+  short_description: "Turn DOCX reports into Gugong-style HTML"
+  brand_color: "#871E2A"
+  default_prompt: "Use $sky-gugong-report-html to convert this DOCX report into a Gugong Museum editorial-style responsive HTML site."
+
+policy:
+  allow_implicit_invocation: true
