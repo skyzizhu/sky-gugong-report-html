@@ -16,6 +16,8 @@ Generate a folder containing:
 - `js/main.js`
 - `images/` with images extracted from the Word file
 
+By default, when no output folder is passed, the converter creates the site next to the input Word file using the current date format `YYYYMMDD_report`, for example `20260509_report`. If that directory already exists, it automatically creates `YYYYMMDD_report_2`, `YYYYMMDD_report_3`, and so on instead of overwriting an older report.
+
 The HTML must be a standalone report page using the Gugong visual language: warm paper background, deep palace red accents, gold/jade secondary tones, large Songti typography, rounded editorial cards, mobile-first responsive tables/cards, and a collapsible bottom-right font-size slider.
 
 ## Required Layout Components
@@ -47,10 +49,16 @@ The HTML must be a standalone report page using the Gugong visual language: warm
 1. Run the bundled converter:
 
 ```bash
+python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_report.py input.docx
+```
+
+Optional: if you want to specify a folder manually, you can still pass it as the second argument. If that folder name already exists, the converter will create a suffixed directory such as `_2` instead of deleting the existing one.
+
+```bash
 python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_report.py input.docx output-folder
 ```
 
-2. Open `output-folder/index.html` locally and verify:
+2. Open the generated `index.html` locally and verify:
 
 - The section order matches the Word outline.
 - All extracted images display.

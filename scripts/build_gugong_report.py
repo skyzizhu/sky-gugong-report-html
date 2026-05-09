@@ -11,9 +11,9 @@ from __future__ import annotations
 import html
 import io
 import re
-import shutil
 import sys
 import zipfile
+from datetime import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -1067,11 +1067,30 @@ window.addEventListener("resize", updateProgress);
 
 
 def prepare_output(output_dir: Path) -> None:
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
     (output_dir / "css").mkdir(parents=True, exist_ok=True)
     (output_dir / "js").mkdir(parents=True, exist_ok=True)
     (output_dir / "images").mkdir(parents=True, exist_ok=True)
+
+
+def dated_report_dir(base_dir: Path) -> Path:
+    return base_dir / f"{datetime.now().strftime('%Y%m%d')}_report"
+
+
+def unique_output_dir(output_dir: Path) -> Path:
+    if not output_dir.exists():
+        return output_dir
+
+    parent = output_dir.parent
+    stem = output_dir.name
+    match = re.match(r"^(.*?)(?:_(\d+))?$", stem)
+    base_name = match.group(1) if match else stem
+    next_index = int(match.group(2)) + 1 if match and match.group(2) else 2
+
+    candidate = parent / f"{base_name}_{next_index}"
+    while candidate.exists():
+        next_index += 1
+        candidate = parent / f"{base_name}_{next_index}"
+    return candidate
 
 
 def build(docx_path: Path, output_dir: Path) -> None:
@@ -1079,25 +1098,33 @@ def build(docx_path: Path, output_dir: Path) -> None:
         fail(f"input docx not found: {docx_path}")
     if docx_path.suffix.lower() != ".docx":
         fail("input must be a .docx file")
-    prepare_output(output_dir)
-    blocks = parse_docx(docx_path, output_dir)
+    final_output_dir = unique_output_dir(output_dir)
+    prepare_output(final_output_dir)
+    blocks = parse_docx(docx_path, final_output_dir)
     if not blocks:
         fail("no content found in docx")
     title, content_blocks = split_title(blocks)
-    (output_dir / "index.html").write_text(
+    (final_output_dir / "index.html").write_text(
         render_html(title, content_blocks), encoding="utf-8"
     )
-    (output_dir / "css" / "styles.css").write_text(CSS.strip() + "\n", encoding="utf-8")
-    (output_dir / "js" / "main.js").write_text(JS.strip() + "\n", encoding="utf-8")
-    print(f"created {output_dir}")
+    (final_output_dir / "css" / "styles.css").write_text(CSS.strip() + "\n", encoding="utf-8")
+    (final_output_dir / "js" / "main.js").write_text(JS.strip() + "\n", encoding="utf-8")
+    print(f"created {final_output_dir}")
     print(f"blocks: {len(blocks)}")
-    print(f"images: {len(list((output_dir / 'images').glob('*')))}")
+    print(f"images: {len(list((final_output_dir / 'images').glob('*')))}")
 
 
 def main(argv: list[str]) -> None:
-    if len(argv) != 3:
-        fail("usage: build_gugong_report.py input.docx output-folder")
-    build(Path(argv[1]).expanduser().resolve(), Path(argv[2]).expanduser().resolve())
+    if len(argv) not in {2, 3}:
+        fail("usage: build_gugong_report.py input.docx [output-folder]")
+
+    docx_path = Path(argv[1]).expanduser().resolve()
+    output_dir = (
+        Path(argv[2]).expanduser().resolve()
+        if len(argv) == 3
+        else dated_report_dir(docx_path.parent)
+    )
+    build(docx_path, output_dir)
 
 
 if __name__ == "__main__":
