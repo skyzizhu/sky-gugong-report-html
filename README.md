@@ -1,19 +1,77 @@
 # Sky Gugong Report HTML
 
-这个目录当前使用的核心能力是 `sky-gugong-report-html`：
+`sky-gugong-report-html` 用来把 Word `.docx` 日报/报告转换成故宫风格的响应式 HTML 站点。
 
-- 将 Word `.docx` 日报/报告转换为故宫风格的响应式 HTML 页面
-- 输出完整站点目录：
-  - `index.html`
-  - `css/styles.css`
-  - `js/main.js`
-  - `images/`
+它会：
 - 保留 Word 中的标题、正文、表格和嵌入图片
-- 适配移动端展示
+- 输出完整站点目录，而不是单独一个 HTML 文件
+- 适配移动端阅读
+- 使用固定的故宫视觉模板生成页面
 
-## 使用方式
+## 输出目录结构
 
-运行下面的命令，把 Word 文件转换成 HTML 站点目录：
+每次生成的结果都是一个完整目录，结构固定为：
+
+```text
+report-folder/
+  index.html
+  css/
+    styles.css
+  js/
+    main.js
+  images/
+    ...
+```
+
+## 最终目录命名规则
+
+默认情况下，不传第二个参数时，脚本会在 Word 源文件所在目录下自动创建一个以当天日期命名的结果目录：
+
+```text
+YYYYMMDD_report
+```
+
+例如在 `2026-05-09` 生成时，目录会是：
+
+```text
+20260509_report
+```
+
+如果同名目录已经存在，不会覆盖旧结果，而是自动顺延：
+
+```text
+20260509_report_2
+20260509_report_3
+...
+```
+
+也就是说：
+- Word 文件在哪个目录
+- 默认生成的网页结果目录就在哪个目录下
+
+## 如何使用
+
+### 1. 默认方式：自动按日期命名输出目录
+
+```bash
+python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_report.py 输入文件.docx
+```
+
+例如：
+
+```bash
+python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_report.py /Users/fushan/Desktop/模板参考（12.26）.docx
+```
+
+这会在 `/Users/fushan/Desktop/` 下生成类似：
+
+```text
+20260509_report/
+```
+
+### 2. 手动指定输出目录
+
+如果你想自己指定目录名，也可以传第二个参数：
 
 ```bash
 python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_report.py 输入文件.docx 输出目录
@@ -25,19 +83,31 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_report.py /Users/fushan/Desktop/gugong/20260421日报1206期.docx /Users/fushan/Desktop/gugong/20260421日报1206期-html
 ```
 
-生成完成后，输出目录中会包含：
+如果你手动指定的目录已经存在，脚本同样不会覆盖，而是自动生成：
 
+```text
+输出目录_2
+输出目录_3
+...
+```
+
+## 生成后怎么用
+
+生成完成后，结果目录中会包含：
 - `index.html`
 - `css/styles.css`
 - `js/main.js`
 - `images/`
 
-可以直接本地打开 `index.html`，也可以放到 Web 服务目录下通过 `localhost` 访问。
+可以直接本地打开 `index.html`，也可以把整个结果目录放到 Web 服务目录下，通过 `localhost` 访问。
+
+注意：
+- 不能只单独拿走 `index.html`
+- 必须把整个结果目录一起保留，因为 HTML 会通过相对路径引用 `css/`、`js/` 和 `images/`
 
 ## 内容规则
 
 生成 HTML 时遵循以下规则：
-
 - 必须按照 Word 大纲和原始排版顺序输出
 - 不得遗漏 Word 中的正文、标题、表格、图片
 - 不得添加 Word 原文之外的报告内容
@@ -51,23 +121,26 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 1. 从 Word 文件中识别并提取所有嵌入图片。
 2. 判断每张图片的原始文件大小。
 3. 如果图片小于 `400KB`：
-   - 原样保留，不做压缩。
+原样保留，不做压缩。
 4. 如果图片大于等于 `400KB`：
-   - 执行网页友好优化；
-   - 仅当最长边超过 `2000px` 时，按比例缩小；
-   - 不允许裁切图片，不允许改变长宽比例；
-   - 无透明通道的图片优先保存为优化后的 JPEG，质量为 `86`；
-   - 带透明通道的图片优先保留为 PNG 并进行优化；
-   - 如果优化后文件反而更大，则回退为原图。
-5. 所有最终图片统一输出到生成目录下的 `images/` 文件夹。
-6. `index.html` 中通过相对路径引用这些图片。
+执行网页友好优化。
+5. 大图优化时遵循以下规则：
+仅当最长边超过 `2000px` 时，按比例缩小。
+6. 图片处理限制如下：
+不允许裁切图片，不允许改变长宽比例。
+7. 无透明通道的图片：
+优先保存为优化后的 JPEG，质量为 `86`。
+8. 带透明通道的图片：
+优先保留为 PNG 并进行优化。
+9. 如果优化后文件反而更大：
+回退为原图。
+10. 所有最终图片统一输出到生成目录下的 `images/` 文件夹。
+11. `index.html` 中通过相对路径引用这些图片。
 
 ## 当前示例
 
 当前目录中的示例输入/输出：
-
 - 输入 Word：
-  [20260421日报1206期.docx](/Users/fushan/Desktop/gugong/20260421日报1206期.docx)
+[20260421日报1206期.docx](/Users/fushan/Desktop/gugong/20260421日报1206期.docx)
 - 输出 HTML：
-  [20260421日报1206期-html/index.html](/Users/fushan/Desktop/gugong/20260421日报1206期-html/index.html)
-
+[20260421日报1206期-html/index.html](/Users/fushan/Desktop/gugong/20260421日报1206期-html/index.html)
