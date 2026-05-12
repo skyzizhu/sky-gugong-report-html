@@ -349,9 +349,16 @@ def render_table(block: Block, class_name: str = "") -> str:
     has_header = len(rows) > 1 and len(set(first_row_text)) == len(first_row_text)
     body_rows = rows[1:] if has_header else rows
     headers = first_row_text if has_header else [""] * max_cols
+    if not class_name and has_header and {"媒体", "标题", "数据"}.issubset(set(headers)):
+        class_name = "media-report-table"
 
     table_class = f' class="{html.escape(class_name)}"' if class_name else ""
-    parts = [f'<div class="table-shell"><div class="table-scroll"><table{table_class}>']
+    shell_classes = ["table-shell"]
+    if class_name == "media-report-table":
+        shell_classes.append("media-table-shell")
+    parts = [
+        f'<div class="{html.escape(" ".join(shell_classes))}"><div class="table-scroll"><table{table_class}>'
+    ]
     if has_header:
         parts.append("<thead><tr>")
         for cell in rows[0]:
@@ -376,6 +383,13 @@ def render_table(block: Block, class_name: str = "") -> str:
 
 def render_paragraph(text: str) -> str:
     return f"<p>{html.escape(text)}</p>"
+
+
+def render_stat_value(value: str) -> str:
+    items = [item.strip() for item in re.split(r"\s*[|｜]\s*", value.strip()) if item.strip()]
+    if len(items) <= 1:
+        return html.escape(value.strip())
+    return "".join(f'<span class="stat-line">{html.escape(item)}</span>' for item in items)
 
 
 def render_detail_line(text: str) -> str:
@@ -481,13 +495,13 @@ def render_overview_blocks(blocks: list[Block]) -> str:
                 cards.append(
                     '<article class="stat-card">'
                     f'<span class="stat-label">{html.escape(label)}</span>'
-                    f'<p class="stat-value">{html.escape(value.strip())}</p>'
+                    f'<p class="stat-value">{render_stat_value(value)}</p>'
                     "</article>"
                 )
             else:
                 cards.append(
                     '<article class="stat-card">'
-                    f'<p class="stat-value">{html.escape(text)}</p>'
+                    f'<p class="stat-value">{render_stat_value(text)}</p>'
                     "</article>"
                 )
         elif block.kind == "table":
@@ -801,7 +815,7 @@ figure { margin: 0; }
   scroll-margin-top: 24px;
 }
 .section.is-visible { opacity: 1; transform: translateY(0); }
-.section h2 { margin: 0; font-size: clamp(2.1rem, 3.2vw, 3.15rem); line-height: 1.08; }
+.section h2 { margin: 0; font-size: clamp(1.99rem, 3.05vw, 3.04rem); line-height: 1.08; }
 .section h3 { margin: 0; font-size: clamp(1.45rem, 2.2vw, 1.95rem); line-height: 1.18; }
 .section h4 { margin: 0; font-size: 1.22rem; }
 .section-header { display: grid; gap: 10px; margin-bottom: 22px; }
@@ -813,8 +827,8 @@ figure { margin: 0; }
 }
 .detail-card {
   display: grid;
-  gap: 14px;
-  margin-top: 18px;
+  gap: 8px;
+  margin-top: 14px;
   padding: 22px;
   border-radius: 26px;
   background: linear-gradient(160deg, rgba(255,255,255,.9), rgba(246,238,224,.9));
@@ -822,9 +836,9 @@ figure { margin: 0; }
   box-shadow: 0 16px 34px rgba(88,54,29,.06);
 }
 .detail-card:first-child { margin-top: 0; }
-.topic-marker + .detail-card { margin-top: 18px; }
+.topic-marker + .detail-card { margin-top: 14px; }
 .detail-card h3,
-.detail-card h4 { margin: 0 0 6px; color: var(--ink); }
+.detail-card h4 { margin: 0 0 2px; color: var(--ink); }
 .detail-card > p:last-child,
 .detail-card > .detail-line:last-child,
 .detail-card > .table-shell:last-child,
@@ -832,10 +846,10 @@ figure { margin: 0; }
 .detail-card > .detail-line:first-of-type,
 .detail-card > p:first-of-type,
 .detail-card > .table-shell:first-of-type,
-.detail-card > .image-block:first-of-type { margin-top: 8px; }
+.detail-card > .image-block:first-of-type { margin-top: 2px; }
 .detail-line {
-  display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px;
-  align-items: start; margin: 0 0 12px;
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px;
+  align-items: start; margin: 0 0 6px;
 }
 .detail-line strong { color: var(--accent-deep); font-weight: 700; }
 .detail-line span { color: var(--ink-soft); }
@@ -843,14 +857,14 @@ figure { margin: 0; }
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px;
 }
 .stat-card {
-  min-height: 148px; padding: 22px; border-radius: 24px;
+  min-height: 124px; padding: 20px; border-radius: 24px;
   background: linear-gradient(160deg, rgba(255,255,255,.7), rgba(246,238,224,.92));
   border: 1px solid rgba(185,141,53,.18);
-  display: grid; align-content: space-between; gap: 14px;
+  display: grid; align-content: start; gap: 8px;
 }
 .stat-card:nth-child(1) {
-  background: linear-gradient(160deg, rgba(125,24,39,.95), rgba(96,17,29,.88));
-  color: #fff6ea;
+  background: linear-gradient(160deg, rgba(169,52,67,.86), rgba(129,43,61,.76));
+  color: #fff8ef;
 }
 .stat-card:nth-child(2) {
   background: linear-gradient(160deg, rgba(191,148,57,.28), rgba(255,250,240,.92));
@@ -861,11 +875,13 @@ figure { margin: 0; }
 .stat-card:nth-child(4) {
   background: linear-gradient(160deg, rgba(255,245,228,.94), rgba(236,220,184,.8));
 }
-.stat-label { color: inherit; font-size: .85rem; letter-spacing: .12em; opacity: .8; }
+.stat-label { color: inherit; font-size: .74rem; letter-spacing: .12em; opacity: .88; }
 .stat-value {
-  margin: 0; color: inherit; font-size: clamp(1.35rem, 2.3vw, 2.35rem);
+  margin: 0; color: inherit; font-size: clamp(1.24rem, 2.15vw, 2.24rem);
   line-height: 1.16; font-weight: 700;
 }
+.stat-line { display: block; }
+.stat-line + .stat-line { margin-top: .22em; }
 .platform-card p { margin: 0; color: inherit; }
 .story-grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px;
@@ -898,6 +914,14 @@ th, td { padding: 16px 18px; text-align: left; vertical-align: top; border-botto
 th { background: rgba(135,30,42,.94); color: #fff7ea; font-weight: 600; }
 td p { margin: 0; color: inherit; }
 .platform-row td { background: rgba(239,226,201,.78); color: var(--accent-deep); font-weight: 600; }
+.media-report-table { min-width: 760px; }
+.media-report-table th:first-child,
+.media-report-table td:first-child { width: 26%; }
+.media-report-table th:nth-child(2),
+.media-report-table td:nth-child(2) { width: 52%; }
+.media-report-table th:nth-child(3),
+.media-report-table td:nth-child(3) { width: 22%; }
+.media-report-table td { line-height: 1.45; }
 .size-switcher { position: fixed; right: 20px; bottom: 20px; z-index: 60; }
 .size-switcher-trigger {
   display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px;
@@ -948,25 +972,60 @@ td p { margin: 0; color: inherit; }
   }
   .stats-grid, .story-grid, .image-gallery { grid-template-columns: 1fr; }
   .detail-line { grid-template-columns: 1fr; gap: 4px; }
-  .stat-card { min-height: 0; padding: 18px; border-radius: 22px; }
+  .stat-card { min-height: 0; padding: 16px; border-radius: 22px; }
   .story-card { padding: 18px; border-radius: 22px; }
-  .detail-card { gap: 12px; padding: 18px; border-radius: 22px; }
+  .detail-card { gap: 7px; padding: 18px; border-radius: 22px; }
   .topic-marker { margin: 2px 0 20px; font-size: clamp(1.55rem, 8.5vw, 2.05rem); }
   .image-gallery { gap: 14px; }
   .image-gallery img { height: auto; max-height: none; }
   .table-shell { overflow: visible; background: transparent; border: 0; }
+  .detail-card .table-shell { margin-left: -3px; margin-right: -3px; }
   .table-scroll { overflow: visible; }
   table { min-width: 0; border-collapse: separate; border-spacing: 0; }
   thead { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   tbody, tr, td { display: block; width: 100%; }
   tbody { display: grid; gap: 14px; }
   tr { overflow: hidden; border-radius: 20px; background: rgba(255,255,255,.86); border: 1px solid rgba(111,74,43,.12); box-shadow: 0 14px 28px rgba(81,48,24,.06); }
-  td { padding: 12px 14px; border-bottom: 1px solid rgba(111,74,43,.1); }
+  td { padding: 10px 11px; border-bottom: 1px solid rgba(111,74,43,.1); }
   td:last-child { border-bottom: 0; }
   td::before { content: attr(data-label); display: block; margin-bottom: 6px; color: var(--accent); font-size: 12px; letter-spacing: .12em; }
   td[data-label=""]::before { content: none; display: none; }
   .platform-row td { border-bottom: 0; background: rgba(239,226,201,.88); }
   td img { width: min(100%, 260px); border-radius: 18px; }
+  .media-table-shell {
+    overflow: hidden; background: rgba(255,255,255,.78);
+    border: 1px solid rgba(111,74,43,.12);
+  }
+  .detail-card .media-table-shell { margin-left: 0; margin-right: 0; }
+  .media-table-shell .table-scroll {
+    overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
+  }
+  .media-report-table {
+    min-width: 680px; border-collapse: collapse; border-spacing: 0;
+  }
+  .media-report-table thead {
+    position: static; width: auto; height: auto; margin: 0; overflow: visible;
+    clip: auto; white-space: normal; border: 0;
+  }
+  .media-report-table tbody { display: table-row-group; }
+  .media-report-table tr {
+    display: table-row; width: auto; overflow: visible; border-radius: 0;
+    background: transparent; border: 0; box-shadow: none;
+  }
+  .media-report-table th,
+  .media-report-table td {
+    display: table-cell; width: auto; padding: 12px 14px;
+    border-bottom: 1px solid rgba(111,74,43,.12); vertical-align: top;
+  }
+  .media-report-table td::before { content: none; display: none; }
+  .media-report-table th {
+    background: rgba(135,30,42,.92); color: #fff7ea;
+    font-size: .9rem; letter-spacing: .08em;
+  }
+  .media-report-table td {
+    background: rgba(255,251,243,.72); color: var(--ink-soft);
+    font-size: .96rem;
+  }
   .catalogue-table tbody { gap: 16px; }
   .catalogue-table tr:not(.platform-row) {
     display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);

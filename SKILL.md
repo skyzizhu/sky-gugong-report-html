@@ -28,11 +28,18 @@ The HTML must be a standalone report page using the Gugong visual language: warm
 - `商业/IP`: render Word tables as compact commercial tables that become card-like rows on mobile.
 - `图片合集` or image-heavy sections: render extracted images as a responsive gallery grid.
 - Keep the visual rhythm close to the standard template: rounded cards, warm translucent surfaces, deep red labels, and tight mobile spacing.
+- First-level in-report section titles should stay slightly restrained; avoid oversized section headings and keep them about 2px smaller than the earlier template scale.
+- Overview statistic cards should use compact vertical spacing: values should sit close to their labels, and the card height/padding should avoid excessive blank space below the value.
+- Overview statistic card text should be slightly smaller than the original template scale, and the primary red card should use a lighter red gradient with high-contrast warm-white text for readability.
+- In overview statistic cards, values separated by `|` or `｜` should render as separate lines instead of keeping the divider character inline.
 - Avoid duplicate title presentation in the hero area. The main report title should not be echoed twice as both a label and the primary heading.
 - Images must show in full by default. Do not crop screenshots or product images with `object-fit: cover`; use full-image display rules unless the user explicitly asks for cropping.
 - Subheadings under a section must stay visually grouped with their parent section instead of creating empty standalone sections.
 - On mobile, report content must be visible without relying on scroll-triggered reveal classes. Decorative reveal animations may be disabled on mobile to avoid hidden late-page content.
 - When a Word table has no real header row, do not invent generic mobile labels such as `列1` or `列2`. Show only labels that genuinely exist in the source content.
+- On mobile, table rows rendered as nested cards inside a section/card should sit 3px closer to the outer card edges on both sides, and table-cell vertical padding should stay compact so row cards do not have excessive empty space at the bottom.
+- Detail cards should use compact internal rhythm: reduce spacing between the card title and its content, reduce spacing between labeled fields such as `首发` and `概述`, and keep adjacent detail cards slightly closer together.
+- Tables with headers `媒体 / 标题 / 数据` should render as polished media report tables. On mobile, preserve the table structure with horizontal scrolling instead of converting rows into stacked cards.
 
 ## Non-Negotiable Content Rules
 
