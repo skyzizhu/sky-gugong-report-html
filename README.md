@@ -109,6 +109,13 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 
 仓库提供 `scripts/upload_to_oss.py`，用于把生成后的完整目录上传到阿里云 OSS，并输出可在浏览器直接打开的 `index.html` 链接。
 
+重要流程：
+- Word 转 HTML 后，先检查本地生成目录和 `index.html`
+- 不要自动上传
+- 必须先让用户确认是否上传到云端服务器
+- 用户确认后，才运行 OSS 上传命令
+- 最终交付使用 `final_url`
+
 真实密钥配置放在本地文件中，不提交到 Git：
 
 ```text

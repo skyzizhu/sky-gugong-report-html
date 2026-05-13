@@ -16,7 +16,7 @@ Generate a folder containing:
 - `js/main.js`
 - `images/` with images extracted from the Word file
 
-After generating the folder, upload the complete output directory to Aliyun OSS when `config/oss_config.json` is available, and return the public `index.html` URL.
+After generating the folder, do not upload automatically. First show the local `index.html` path and ask the user to confirm whether to upload the complete output directory to Aliyun OSS. Upload only after the user explicitly confirms, then return the browser-viewable `final_url`.
 
 By default, when no output folder is passed, the converter creates the site next to the input Word file using the current date format `YYYYMMDD_report`, for example `20260509_report`. If that directory already exists, it automatically creates `YYYYMMDD_report_2`, `YYYYMMDD_report_3`, and so on instead of overwriting an older report.
 
@@ -80,7 +80,11 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 - Tables are readable on desktop and collapse into card-like rows on mobile.
 - The bottom-right `Aa` button opens the font-size slider and adjusts body text live.
 
-3. Upload the generated folder to Aliyun OSS:
+3. Ask the user whether to upload the generated folder to Aliyun OSS.
+
+Do not run the upload command until the user explicitly confirms. The confirmation should happen after local generation and verification, so the user can decide whether the report is ready to publish.
+
+4. After confirmation, upload the generated folder to Aliyun OSS:
 
 ```bash
 python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/upload_to_oss.py output-folder
@@ -90,7 +94,7 @@ The upload script reads `config/oss_config.json` by default. Keep the real confi
 
 - The OSS upload prints `public_url` and `final_url`. Return only `final_url` as the final deliverable link. `final_url` must be a browser-viewable signed URL with `response-content-disposition=inline`, not a link that downloads `index.html`. It should use the configured `public_base_url` such as `http://report.blynkai.com`, and `signed_url_expires_days` should usually be `3` so the link is available for three days after upload.
 
-4. If the Word file has unusual formatting that the script cannot infer cleanly, manually adjust only structure/styling while preserving source content verbatim.
+5. If the Word file has unusual formatting that the script cannot infer cleanly, manually adjust only structure/styling while preserving source content verbatim.
 
 ## Implementation Notes
 
