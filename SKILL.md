@@ -16,7 +16,7 @@ Generate a folder containing:
 - `js/main.js`
 - `images/` with images extracted from the Word file
 
-After generating the folder, do not upload automatically. First show the local `index.html` path and ask the user to confirm whether to upload the complete output directory to Aliyun OSS. Upload only after the user explicitly confirms, then return the browser-viewable `final_url`.
+After generating the folder, do not upload automatically. First show both the generated output directory path and the local `index.html` entry path, then ask the user to confirm whether to upload the complete output directory to Aliyun OSS. Upload only after the user explicitly confirms, then return the browser-viewable `final_url`.
 
 By default, when no output folder is passed, the converter creates the site next to the input Word file using the current date format `YYYYMMDD_report`, for example `20260509_report`. If that directory already exists, it automatically creates `YYYYMMDD_report_2`, `YYYYMMDD_report_3`, and so on instead of overwriting an older report.
 
@@ -79,6 +79,7 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 - All extracted images display.
 - Tables are readable on desktop and collapse into card-like rows on mobile.
 - The bottom-right `Aa` button opens the font-size slider and adjusts body text live.
+- In the response after local generation, show both the generated output directory and the local `index.html` entry file before asking whether to upload.
 
 3. Ask the user whether to upload the generated folder to Aliyun OSS.
 

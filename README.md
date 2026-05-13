@@ -102,6 +102,7 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 可以直接本地打开 `index.html`，也可以把整个结果目录放到 Web 服务目录下，通过 `localhost` 访问。
 
 注意：
+- 转换完成后的反馈必须同时显示生成后的完整目录和本地入口文件 `index.html`
 - 不能只单独拿走 `index.html`
 - 必须把整个结果目录一起保留，因为 HTML 会通过相对路径引用 `css/`、`js/` 和 `images/`
 
@@ -111,6 +112,7 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 
 重要流程：
 - Word 转 HTML 后，先检查本地生成目录和 `index.html`
+- 向用户显示生成后的完整目录和本地入口文件
 - 不要自动上传
 - 必须先让用户确认是否上传到云端服务器
 - 用户确认后，才运行 OSS 上传命令
