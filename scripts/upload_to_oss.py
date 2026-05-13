@@ -197,10 +197,10 @@ def upload(report_dir: Path, config_path: Path = DEFAULT_CONFIG) -> str:
     else:
         public_base_url = f"https://{config.bucket}.{endpoint_host(config.endpoint)}"
     public_url = f"{public_base_url}/{quote_key(index_key)}"
-    inline_url = signed_get_url(config, index_key)
-    print(f"url: {public_url}")
-    print(f"inline_url: {inline_url}")
-    return inline_url
+    final_url = signed_get_url(config, index_key)
+    print(f"public_url: {public_url}")
+    print(f"final_url: {final_url}")
+    return final_url
 
 
 def main(argv: list[str]) -> None:

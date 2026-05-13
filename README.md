@@ -107,7 +107,7 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 
 ## 上传到阿里云 OSS
 
-仓库提供 `scripts/upload_to_oss.py`，用于把生成后的完整目录上传到阿里云 OSS，并输出可访问的 `index.html` 链接。
+仓库提供 `scripts/upload_to_oss.py`，用于把生成后的完整目录上传到阿里云 OSS，并输出可在浏览器直接打开的 `index.html` 链接。
 
 真实密钥配置放在本地文件中，不提交到 Git：
 
@@ -148,7 +148,7 @@ python3 scripts/upload_to_oss.py /Users/fushan/Desktop/20260513_report
 http://report.blynkai.com/20260513_report/index.html?Expires=...
 ```
 
-脚本同时会输出 `inline_url`，默认有效期为 `signed_url_expires_days` 配置的天数。当前建议配置为 `3`，表示提交上传后三天内可访问，三天后签名过期。
+脚本会输出 `public_url` 和 `final_url`。最终交付必须使用 `final_url`，它会带 `response-content-disposition=inline` 签名参数，确保浏览器直接浏览页面，而不是下载 `index.html`。默认有效期为 `signed_url_expires_days` 配置的天数。当前建议配置为 `3`，表示提交上传后三天内可访问，三天后签名过期。
 
 ## 内容规则
 
