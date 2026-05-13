@@ -25,16 +25,18 @@ The HTML must be a standalone report page using the Gugong visual language: warm
 - `全网信息总览`: render as compact statistic cards, not plain paragraphs.
 - Overview statistic cards should show each metric once. Do not repeat the original raw sentence under the formatted value.
 - `今日关注`, `其他信息`, `AI侵权`, `参考消息`: render title/source/summary/image groups as event cards.
-- `商业/IP`: render Word tables as compact commercial tables that become card-like rows on mobile.
+- `商业/IP` sections and sections containing `商业产品图集`: render Word tables as compact commercial tables that become card-like rows on mobile.
+- On mobile commercial table cards, consecutive text cells in the same row should be summarized into one line separated by small dots (`·`), while image cells stay visually separate.
 - `图片合集` or image-heavy sections: render extracted images as a responsive gallery grid.
 - Keep the visual rhythm close to the standard template: rounded cards, warm translucent surfaces, deep red labels, and tight mobile spacing.
-- Hero report titles should stay expressive but not oversized; keep the main hero heading about 12px smaller than the earlier template scale on both desktop and mobile.
+- Hero report titles should stay expressive but not oversized; keep the main hero heading about 16px smaller than the earlier template scale on both desktop and mobile.
 - First-level in-report section titles should stay restrained; avoid oversized section headings and keep them about 6px smaller than the earlier template scale.
 - Second-level and third-level in-report headings should use body-sized typography with bold weight, not enlarged heading typography.
 - Overview statistic cards should use compact vertical spacing: values should sit close to their labels, and card height plus bottom padding should avoid excessive blank space below the content across all quick overview cards.
 - Overview statistic card labels are second-level titles and should be visibly larger and bolder than body text. The statistic values and topic lines underneath are body content, not headings, and should use restrained body-sized typography.
-- Overview statistic card text should be smaller than the original oversized template scale, and the primary red card should use a lighter red gradient with high-contrast warm-white text for readability.
+- Overview statistic card text should be smaller than the original oversized template scale, and the primary red card should use a lighter red gradient with forced high-contrast warm-white label and value text for readability.
 - In overview statistic cards, values separated by `|` or `｜` should render as separate lines instead of keeping the divider character inline.
+- In overview statistic cards, a standalone label ending with `：` or `:` must stay grouped with the following content paragraphs until the next label/table/image. Do not split a label such as `核心热词：` and its following value lines into separate cards.
 - Avoid duplicate title presentation in the hero area. The main report title should not be echoed twice as both a label and the primary heading.
 - Images must show in full by default. Do not crop screenshots or product images with `object-fit: cover`; use full-image display rules unless the user explicitly asks for cropping.
 - Subheadings under a section must stay visually grouped with their parent section instead of creating empty standalone sections.

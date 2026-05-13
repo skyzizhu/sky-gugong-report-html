@@ -370,12 +370,29 @@ def render_table(block: Block, class_name: str = "") -> str:
         is_platform = max_cols > 1 and len(set([v for v in text_values if v])) == 1
         row_class = ' class="platform-row"' if is_platform else ""
         parts.append(f"<tr{row_class}>")
+        if class_name == "catalogue-table" and not is_platform:
+            summary_items = [
+                value
+                for cell, value in zip(row, text_values)
+                if value and "<img" not in cell
+            ]
+            if len(summary_items) > 1:
+                summary = "".join(
+                    f'<span>{html.escape(item)}</span>' for item in summary_items
+                )
+                parts.append(f'<td class="catalogue-summary" data-label="">{summary}</td>')
         for idx, cell in enumerate(row):
             label = html.escape(headers[idx] if idx < len(headers) else "")
             colspan = f' colspan="{max_cols}"' if is_platform and idx == 0 else ""
             if is_platform and idx > 0:
                 continue
-            parts.append(f'<td{colspan} data-label="{label}">{cell}</td>')
+            cell_classes: list[str] = []
+            if class_name == "catalogue-table" and not is_platform:
+                cell_classes.append(
+                    "catalogue-image-cell" if "<img" in cell else "catalogue-text-cell"
+                )
+            class_attr = f' class="{" ".join(cell_classes)}"' if cell_classes else ""
+            parts.append(f'<td{class_attr}{colspan} data-label="{label}">{cell}</td>')
         parts.append("</tr>")
     parts.append("</tbody></table></div></div>")
     return "\n".join(parts)
@@ -385,10 +402,23 @@ def render_paragraph(text: str) -> str:
     return f"<p>{html.escape(text)}</p>"
 
 
+def split_stat_value(value: str) -> list[str]:
+    return [item.strip() for item in re.split(r"\s*[|｜]\s*", value.strip()) if item.strip()]
+
+
 def render_stat_value(value: str) -> str:
-    items = [item.strip() for item in re.split(r"\s*[|｜]\s*", value.strip()) if item.strip()]
+    items = split_stat_value(value)
     if len(items) <= 1:
         return html.escape(value.strip())
+    return "".join(f'<span class="stat-line">{html.escape(item)}</span>' for item in items)
+
+
+def render_stat_values(values: list[str]) -> str:
+    items: list[str] = []
+    for value in values:
+        items.extend(split_stat_value(value))
+    if len(items) <= 1:
+        return html.escape(items[0]) if items else ""
     return "".join(f'<span class="stat-line">{html.escape(item)}</span>' for item in items)
 
 
@@ -478,12 +508,37 @@ def render_structured_blocks(blocks: list[Block], table_class: str = "") -> str:
 def render_overview_blocks(blocks: list[Block]) -> str:
     cards: list[str] = []
     pending: list[str] = []
+    pending_label: str | None = None
+    pending_values: list[str] = []
     parts: list[str] = []
+
+    def append_stat_card(label: str | None, values: list[str]) -> None:
+        if label:
+            cards.append(
+                '<article class="stat-card">'
+                f'<span class="stat-label">{html.escape(label)}</span>'
+                f'<p class="stat-value">{render_stat_values(values)}</p>'
+                "</article>"
+            )
+        elif values:
+            cards.append(
+                '<article class="stat-card">'
+                f'<p class="stat-value">{render_stat_values(values)}</p>'
+                "</article>"
+            )
+
+    def flush_pending_label() -> None:
+        nonlocal pending_label, pending_values
+        if pending_label is not None:
+            append_stat_card(pending_label, pending_values)
+            pending_label = None
+            pending_values = []
 
     for block in blocks:
         if block.kind == "paragraph":
             text = block.text
             if "平台占比如下" in text:
+                flush_pending_label()
                 pending.append(text)
                 continue
             if pending:
@@ -491,24 +546,25 @@ def render_overview_blocks(blocks: list[Block]) -> str:
                 continue
             match = re.match(r"^(.+?[：:])(.+)$", text)
             if match:
+                flush_pending_label()
                 label, value = match.groups()
-                cards.append(
-                    '<article class="stat-card">'
-                    f'<span class="stat-label">{html.escape(label)}</span>'
-                    f'<p class="stat-value">{render_stat_value(value)}</p>'
-                    "</article>"
-                )
+                append_stat_card(label, [value])
+            elif re.match(r"^[^：:]{1,18}[：:]$", text):
+                flush_pending_label()
+                pending_label = text
             else:
-                cards.append(
-                    '<article class="stat-card">'
-                    f'<p class="stat-value">{render_stat_value(text)}</p>'
-                    "</article>"
-                )
+                if pending_label is not None:
+                    pending_values.append(text)
+                else:
+                    append_stat_card(None, [text])
         elif block.kind == "table":
+            flush_pending_label()
             parts.append(render_table(block))
         elif block.kind == "image":
+            flush_pending_label()
             parts.append(render_inline_images(block.images))
 
+    flush_pending_label()
     if pending:
         cards.append(
             '<article class="stat-card platform-card">'
@@ -584,12 +640,19 @@ def normalize_section_heading(heading: str) -> str:
 
 def section_body_for_heading(heading: str, body: list[Block]) -> str:
     normalized = normalize_section_heading(heading)
+    has_commercial_catalogue = any(
+        block.kind == "paragraph"
+        and any(marker in block.text for marker in ("商业产品图集", "商业/IP"))
+        for block in body
+    )
     if normalized in {"全网信息总览", "故宫数据快览"}:
         return render_overview_blocks(body)
     if normalized in {"今日关注", "其他信息", "AI侵权", "参考消息", "可能性传播点趋势预判"}:
         return render_story_blocks(body)
     if normalized.startswith("商业/IP"):
         return render_generic_blocks(body, "catalogue-table")
+    if has_commercial_catalogue:
+        return render_structured_blocks(body, "catalogue-table")
     if "图集" in normalized or "图片合集" in normalized:
         return render_gallery_blocks(body)
     return render_structured_blocks(body)
@@ -783,7 +846,7 @@ figure { margin: 0; }
 }
 .hero-copy { min-width: 0; }
 .hero-copy h1 {
-  margin: 0; font-size: clamp(2.68rem, 6.6vw, 6.08rem);
+  margin: 0; font-size: clamp(2.46rem, 6.2vw, 5.86rem);
   line-height: .96; letter-spacing: -.04em; color: #fff8ef;
 }
 .hero-meta {
@@ -871,6 +934,12 @@ figure { margin: 0; }
 .stat-card:nth-child(1) {
   background: linear-gradient(160deg, rgba(169,52,67,.86), rgba(129,43,61,.76));
   color: #fff8ef;
+}
+.stat-card:nth-child(1) .stat-label,
+.stat-card:nth-child(1) .stat-value,
+.stat-card:nth-child(1) .stat-line {
+  color: #fff8ef !important;
+  -webkit-text-fill-color: #fff8ef;
 }
 .stat-card:nth-child(2) {
   background: linear-gradient(160deg, rgba(191,148,57,.28), rgba(255,250,240,.92));
@@ -969,6 +1038,7 @@ td p { margin: 0; color: inherit; }
 .media-report-table tbody tr:nth-child(even) td { background: rgba(243,234,219,.68); }
 .media-report-table th + th,
 .media-report-table td + td { border-left: 1px solid rgba(111,74,43,.07); }
+.catalogue-summary { display: none; }
 .size-switcher { position: fixed; right: 20px; bottom: 20px; z-index: 60; }
 .size-switcher-trigger {
   display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px;
@@ -1009,7 +1079,7 @@ td p { margin: 0; color: inherit; }
   .hero { padding: 20px; border-radius: 28px; }
   .hero-nav { display: none; }
   .hero-grid { min-height: auto; gap: 22px; padding-top: 28px; }
-  .hero-copy h1 { font-size: clamp(1.94rem, 10.05vw, 2.69rem); }
+  .hero-copy h1 { font-size: clamp(1.72rem, 9vw, 2.47rem); }
   .hero-meta { padding: 16px; border-radius: 22px; }
   .hero-meta-label { font-size: .84rem; }
   .hero-meta li { font-size: .95rem; }
@@ -1086,7 +1156,7 @@ td p { margin: 0; color: inherit; }
   .media-report-table tbody tr:nth-child(even) td { background: rgba(242,232,215,.72); }
   .catalogue-table tbody { gap: 16px; }
   .catalogue-table tr:not(.platform-row) {
-    display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    display: grid; grid-template-columns: 1fr;
     gap: 10px 14px; padding: 16px; border-radius: 24px;
     background: linear-gradient(160deg, rgba(255,255,255,.94), rgba(247,239,226,.88));
   }
@@ -1096,10 +1166,20 @@ td p { margin: 0; color: inherit; }
   .catalogue-table tr:not(.platform-row) td::before {
     margin-bottom: 4px; font-size: 12px; letter-spacing: .14em;
   }
-  .catalogue-table tr:not(.platform-row) td:first-child {
-    color: var(--ink); font-size: 1.12rem; font-weight: 700; line-height: 1.35;
+  .catalogue-table tr:not(.platform-row) .catalogue-text-cell {
+    display: none;
   }
-  .catalogue-table tr:not(.platform-row) td:nth-child(2) {
+  .catalogue-table tr:not(.platform-row) .catalogue-summary {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0;
+    color: var(--ink); font-size: 1rem; font-weight: 700; line-height: 1.45;
+  }
+  .catalogue-table tr:not(.platform-row) .catalogue-summary span {
+    display: inline; min-width: 0;
+  }
+  .catalogue-table tr:not(.platform-row) .catalogue-summary span + span::before {
+    content: "·"; margin: 0 .45em; color: rgba(135,30,42,.62);
+  }
+  .catalogue-table tr:not(.platform-row) .catalogue-image-cell {
     color: var(--ink-soft); line-height: 1.45;
   }
   .size-switcher { right: 12px; bottom: 12px; }
