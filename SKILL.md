@@ -88,7 +88,7 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/upload_to_oss
 
 The upload script reads `config/oss_config.json` by default. Keep the real config local and uncommitted; commit only `config/oss_config.example.json`.
 
-- The OSS upload prints both `url` and `inline_url`. Prefer returning `inline_url` when OSS responds with forced download headers, because it signs an inline `index.html` response.
+- The OSS upload prints both `url` and `inline_url`. Return `inline_url` as the final accessible link. It should use the configured `public_base_url` such as `http://report.blynkai.com`, and `signed_url_expires_days` should usually be `3` so the link is available for three days after upload.
 
 4. If the Word file has unusual formatting that the script cannot infer cleanly, manually adjust only structure/styling while preserving source content verbatim.
 

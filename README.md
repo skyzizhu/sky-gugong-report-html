@@ -129,9 +129,10 @@ cp config/oss_config.example.json config/oss_config.json
   "access_key_secret": "YOUR_ACCESS_KEY_SECRET",
   "endpoint": "https://oss-cn-beijing.aliyuncs.com",
   "bucket": "gugong-report",
+  "public_base_url": "http://report.blynkai.com",
   "remote_prefix": "",
   "public_read": true,
-  "signed_url_expires_days": 3650
+  "signed_url_expires_days": 3
 }
 ```
 
@@ -141,13 +142,13 @@ cp config/oss_config.example.json config/oss_config.json
 python3 scripts/upload_to_oss.py /Users/fushan/Desktop/20260513_report
 ```
 
-如果 `remote_prefix` 为空，脚本会使用本地目录名作为 OSS 前缀，例如：
+如果 `remote_prefix` 为空，脚本会使用本地目录名作为 OSS 前缀。如果配置了 `public_base_url`，最终链接会使用该域名，例如：
 
 ```text
-https://gugong-report.oss-cn-beijing.aliyuncs.com/20260513_report/index.html
+http://report.blynkai.com/20260513_report/index.html?Expires=...
 ```
 
-脚本同时会输出 `inline_url`。如果 bucket 对匿名访问强制下载，优先使用 `inline_url`，它会通过签名参数覆盖响应头，让浏览器直接打开 HTML 页面。
+脚本同时会输出 `inline_url`，默认有效期为 `signed_url_expires_days` 配置的天数。当前建议配置为 `3`，表示提交上传后三天内可访问，三天后签名过期。
 
 ## 内容规则
 

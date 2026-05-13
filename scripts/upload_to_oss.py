@@ -27,6 +27,7 @@ class OssConfig:
     access_key_secret: str
     endpoint: str
     bucket: str
+    public_base_url: str
     remote_prefix: str
     public_read: bool
     signed_url_expires_days: int
@@ -55,9 +56,10 @@ def load_config(path: Path) -> OssConfig:
         access_key_secret=raw["access_key_secret"],
         endpoint=raw["endpoint"].rstrip("/"),
         bucket=raw["bucket"],
+        public_base_url=raw.get("public_base_url", "").rstrip("/"),
         remote_prefix=raw.get("remote_prefix", ""),
         public_read=bool(raw.get("public_read", True)),
-        signed_url_expires_days=int(raw.get("signed_url_expires_days", 3650)),
+        signed_url_expires_days=int(raw.get("signed_url_expires_days", 3)),
     )
 
 
@@ -161,8 +163,11 @@ def signed_get_url(config: OssConfig, key: str) -> str:
         "Signature": signature,
         **response_headers,
     }
-    host = f"{config.bucket}.{endpoint_host(config.endpoint)}"
-    return f"https://{host}/{quote_key(key)}?{urllib.parse.urlencode(query)}"
+    if config.public_base_url:
+        base_url = config.public_base_url
+    else:
+        base_url = f"https://{config.bucket}.{endpoint_host(config.endpoint)}"
+    return f"{base_url}/{quote_key(key)}?{urllib.parse.urlencode(query)}"
 
 
 def iter_files(report_dir: Path) -> list[Path]:
@@ -187,7 +192,11 @@ def upload(report_dir: Path, config_path: Path = DEFAULT_CONFIG) -> str:
         print(f"uploaded {path.relative_to(report_dir)} -> oss://{config.bucket}/{key}")
 
     index_key = object_key(prefix, Path("index.html"))
-    public_url = f"https://{config.bucket}.{endpoint_host(config.endpoint)}/{quote_key(index_key)}"
+    if config.public_base_url:
+        public_base_url = config.public_base_url
+    else:
+        public_base_url = f"https://{config.bucket}.{endpoint_host(config.endpoint)}"
+    public_url = f"{public_base_url}/{quote_key(index_key)}"
     inline_url = signed_get_url(config, index_key)
     print(f"url: {public_url}")
     print(f"inline_url: {inline_url}")

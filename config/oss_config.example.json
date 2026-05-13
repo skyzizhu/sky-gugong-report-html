@@ -3,7 +3,8 @@
   "access_key_secret": "YOUR_ACCESS_KEY_SECRET",
   "endpoint": "https://oss-cn-beijing.aliyuncs.com",
   "bucket": "gugong-report",
+  "public_base_url": "http://report.blynkai.com",
   "remote_prefix": "",
   "public_read": true,
-  "signed_url_expires_days": 3650
+  "signed_url_expires_days": 3
 }
