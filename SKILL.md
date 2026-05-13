@@ -28,7 +28,7 @@ The HTML must be a standalone report page using the Gugong visual language: warm
 - Overview statistic cards should show each metric once. Do not repeat the original raw sentence under the formatted value.
 - `今日关注`, `其他信息`, `AI侵权`, `参考消息`: render title/source/summary/image groups as event cards.
 - `商业/IP` sections and sections containing `商业产品图集`: render Word tables as compact commercial tables that become card-like rows on mobile.
-- On mobile commercial table cards, consecutive text cells in the same row should be summarized into one line separated by small dots (`·`), while image cells stay visually separate.
+- On mobile commercial table cards, text cells should keep the current typography but use a stable two-line summary: shorter metadata fields on the first line separated by small dots (`·`), and the final product/title field on the second line. Image cells stay visually separate.
 - `图片合集` or image-heavy sections: render extracted images as a responsive gallery grid.
 - Keep the visual rhythm close to the standard template: rounded cards, warm translucent surfaces, deep red labels, and tight mobile spacing.
 - Hero report titles should stay expressive but not oversized; keep the main hero heading about 16px smaller than the earlier template scale on both desktop and mobile.

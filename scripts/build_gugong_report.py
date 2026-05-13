@@ -377,8 +377,12 @@ def render_table(block: Block, class_name: str = "") -> str:
                 if value and "<img" not in cell
             ]
             if len(summary_items) > 1:
-                summary = "".join(
-                    f'<span>{html.escape(item)}</span>' for item in summary_items
+                meta_items = summary_items[:-1]
+                title_item = summary_items[-1]
+                meta = "".join(f"<span>{html.escape(item)}</span>" for item in meta_items)
+                summary = (
+                    f'<span class="catalogue-summary-meta">{meta}</span>'
+                    f'<span class="catalogue-summary-title">{html.escape(title_item)}</span>'
                 )
                 parts.append(f'<td class="catalogue-summary" data-label="">{summary}</td>')
         for idx, cell in enumerate(row):
@@ -1170,13 +1174,17 @@ td p { margin: 0; color: inherit; }
     display: none;
   }
   .catalogue-table tr:not(.platform-row) .catalogue-summary {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 0;
+    display: grid; gap: 2px;
     color: var(--ink); font-size: 1rem; font-weight: 700; line-height: 1.45;
   }
-  .catalogue-table tr:not(.platform-row) .catalogue-summary span {
+  .catalogue-table tr:not(.platform-row) .catalogue-summary-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0;
+  }
+  .catalogue-table tr:not(.platform-row) .catalogue-summary-meta span,
+  .catalogue-table tr:not(.platform-row) .catalogue-summary-title {
     display: inline; min-width: 0;
   }
-  .catalogue-table tr:not(.platform-row) .catalogue-summary span + span::before {
+  .catalogue-table tr:not(.platform-row) .catalogue-summary-meta span + span::before {
     content: "·"; margin: 0 .45em; color: rgba(135,30,42,.62);
   }
   .catalogue-table tr:not(.platform-row) .catalogue-image-cell {
