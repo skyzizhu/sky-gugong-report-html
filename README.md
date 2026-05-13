@@ -136,7 +136,7 @@ cp config/oss_config.example.json config/oss_config.json
   "access_key_secret": "YOUR_ACCESS_KEY_SECRET",
   "endpoint": "https://oss-cn-beijing.aliyuncs.com",
   "bucket": "gugong-report",
-  "public_base_url": "http://report.blynkai.com",
+  "public_base_url": "http://your-report-domain.example.com",
   "remote_prefix": "",
   "public_read": true,
   "signed_url_expires_days": 3
@@ -152,7 +152,7 @@ python3 scripts/upload_to_oss.py /Users/fushan/Desktop/20260513_report
 如果 `remote_prefix` 为空，脚本会使用本地目录名作为 OSS 前缀。如果配置了 `public_base_url`，最终链接会使用该域名，例如：
 
 ```text
-http://report.blynkai.com/20260513_report/index.html?Expires=...
+http://your-report-domain.example.com/20260513_report/index.html?Expires=...
 ```
 
 脚本会输出 `public_url` 和 `final_url`。最终交付必须使用 `final_url`，它会带 `response-content-disposition=inline` 签名参数，确保浏览器直接浏览页面，而不是下载 `index.html`。默认有效期为 `signed_url_expires_days` 配置的天数。当前建议配置为 `3`，表示提交上传后三天内可访问，三天后签名过期。
