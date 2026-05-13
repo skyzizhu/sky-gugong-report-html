@@ -105,6 +105,50 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 - 不能只单独拿走 `index.html`
 - 必须把整个结果目录一起保留，因为 HTML 会通过相对路径引用 `css/`、`js/` 和 `images/`
 
+## 上传到阿里云 OSS
+
+仓库提供 `scripts/upload_to_oss.py`，用于把生成后的完整目录上传到阿里云 OSS，并输出可访问的 `index.html` 链接。
+
+真实密钥配置放在本地文件中，不提交到 Git：
+
+```text
+config/oss_config.json
+```
+
+可以从模板复制：
+
+```bash
+cp config/oss_config.example.json config/oss_config.json
+```
+
+配置字段：
+
+```json
+{
+  "access_key_id": "YOUR_ACCESS_KEY_ID",
+  "access_key_secret": "YOUR_ACCESS_KEY_SECRET",
+  "endpoint": "https://oss-cn-beijing.aliyuncs.com",
+  "bucket": "gugong-report",
+  "remote_prefix": "",
+  "public_read": true,
+  "signed_url_expires_days": 3650
+}
+```
+
+上传示例：
+
+```bash
+python3 scripts/upload_to_oss.py /Users/fushan/Desktop/20260513_report
+```
+
+如果 `remote_prefix` 为空，脚本会使用本地目录名作为 OSS 前缀，例如：
+
+```text
+https://gugong-report.oss-cn-beijing.aliyuncs.com/20260513_report/index.html
+```
+
+脚本同时会输出 `inline_url`。如果 bucket 对匿名访问强制下载，优先使用 `inline_url`，它会通过签名参数覆盖响应头，让浏览器直接打开 HTML 页面。
+
 ## 内容规则
 
 生成 HTML 时遵循以下规则：

@@ -16,6 +16,8 @@ Generate a folder containing:
 - `js/main.js`
 - `images/` with images extracted from the Word file
 
+After generating the folder, upload the complete output directory to Aliyun OSS when `config/oss_config.json` is available, and return the public `index.html` URL.
+
 By default, when no output folder is passed, the converter creates the site next to the input Word file using the current date format `YYYYMMDD_report`, for example `20260509_report`. If that directory already exists, it automatically creates `YYYYMMDD_report_2`, `YYYYMMDD_report_3`, and so on instead of overwriting an older report.
 
 The HTML must be a standalone report page using the Gugong visual language: warm paper background, deep palace red accents, gold/jade secondary tones, large Songti typography, rounded editorial cards, mobile-first responsive tables/cards, and a collapsible bottom-right font-size slider.
@@ -78,7 +80,17 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 - Tables are readable on desktop and collapse into card-like rows on mobile.
 - The bottom-right `Aa` button opens the font-size slider and adjusts body text live.
 
-3. If the Word file has unusual formatting that the script cannot infer cleanly, manually adjust only structure/styling while preserving source content verbatim.
+3. Upload the generated folder to Aliyun OSS:
+
+```bash
+python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/upload_to_oss.py output-folder
+```
+
+The upload script reads `config/oss_config.json` by default. Keep the real config local and uncommitted; commit only `config/oss_config.example.json`.
+
+- The OSS upload prints both `url` and `inline_url`. Prefer returning `inline_url` when OSS responds with forced download headers, because it signs an inline `index.html` response.
+
+4. If the Word file has unusual formatting that the script cannot infer cleanly, manually adjust only structure/styling while preserving source content verbatim.
 
 ## Implementation Notes
 
