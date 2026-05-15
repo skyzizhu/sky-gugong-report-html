@@ -406,6 +406,10 @@ def render_paragraph(text: str) -> str:
     return f"<p>{html.escape(text)}</p>"
 
 
+def render_caption(text: str) -> str:
+    return f'<p class="image-caption">{html.escape(text)}</p>'
+
+
 def split_stat_value(value: str) -> list[str]:
     return [item.strip() for item in re.split(r"\s*[|｜]\s*", value.strip()) if item.strip()]
 
@@ -443,7 +447,10 @@ def render_generic_blocks(blocks: list[Block], table_class: str = "") -> str:
     parts: list[str] = []
     for block in blocks:
         if block.kind == "paragraph":
-            parts.append(render_detail_line(block.text))
+            if is_caption_text(block.text):
+                parts.append(render_caption(block.text))
+            else:
+                parts.append(render_detail_line(block.text))
         elif block.kind == "image":
             parts.append(render_inline_images(block.images))
         elif block.kind == "table":
@@ -456,6 +463,52 @@ def render_generic_blocks(blocks: list[Block], table_class: str = "") -> str:
 
 def is_marker_heading(text: str) -> bool:
     return bool(re.match(r"^（[一二三四五六七八九十]+）", text.strip()))
+
+
+def is_detail_line_text(text: str) -> bool:
+    return bool(re.match(r"^([^：:]{1,10}[：:])(.+)$", text.strip()))
+
+
+def is_caption_text(text: str) -> bool:
+    normalized = text.strip()
+    return bool(
+        normalized
+        and len(normalized) <= 12
+        and any(token in normalized for token in ("配图", "截图", "附图", "示意图"))
+    )
+
+
+def is_implicit_card_heading(blocks: list[Block], index: int) -> bool:
+    block = blocks[index]
+    if block.kind != "paragraph":
+        return False
+
+    text = block.text.strip()
+    if not text or is_detail_line_text(text) or is_caption_text(text):
+        return False
+    if len(text) > 42 or re.search(r"[。；！？：:；]$", text):
+        return False
+
+    previous_kind = blocks[index - 1].kind if index > 0 else ""
+    if previous_kind == "image":
+        return False
+
+    next_block = blocks[index + 1] if index + 1 < len(blocks) else None
+    if next_block is None:
+        return False
+    if next_block.kind == "image":
+        return True
+    if next_block.kind == "table":
+        return True
+    if next_block.kind != "paragraph":
+        return False
+
+    next_text = next_block.text.strip()
+    if is_detail_line_text(next_text):
+        return True
+    if len(next_text) > 18 and re.search(r"[。；！？]$", next_text):
+        return True
+    return False
 
 
 def render_structured_blocks(blocks: list[Block], table_class: str = "") -> str:
@@ -486,7 +539,7 @@ def render_structured_blocks(blocks: list[Block], table_class: str = "") -> str:
         card_heading = None
         card_blocks = []
 
-    for block in blocks:
+    for index, block in enumerate(blocks):
         if block.kind == "heading":
             if is_marker_heading(block.text):
                 flush_card()
@@ -496,6 +549,13 @@ def render_structured_blocks(blocks: list[Block], table_class: str = "") -> str:
             flush_card()
             flush_loose()
             card_heading = block
+            card_blocks = []
+            continue
+
+        if is_implicit_card_heading(blocks, index):
+            flush_card()
+            flush_loose()
+            card_heading = Block(kind="heading", text=block.text, level=4)
             card_blocks = []
             continue
 
@@ -884,7 +944,7 @@ figure { margin: 0; }
   scroll-margin-top: 24px;
 }
 .section.is-visible { opacity: 1; transform: translateY(0); }
-.section h2 { margin: 0; font-size: clamp(1.66rem, 2.45vw, 2.71rem); line-height: 1.08; }
+.section h2 { margin: 0; font-size: calc(clamp(1.66rem, 2.45vw, 2.71rem) - 6px); line-height: 1.08; }
 .section h3,
 .section h4 { margin: 0; font-size: 1rem; line-height: 1.65; font-weight: 700; }
 .section-header { display: grid; gap: 10px; margin-bottom: 22px; }
@@ -900,7 +960,7 @@ figure { margin: 0; }
   display: grid;
   gap: 6px;
   margin-top: 14px;
-  padding: 22px;
+  padding: 22px 10px;
   border-radius: 26px;
   background: linear-gradient(160deg, rgba(255,255,255,.88), rgba(247,239,226,.88));
   border: 1px solid rgba(111,74,43,.09);
@@ -929,7 +989,7 @@ figure { margin: 0; }
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px;
 }
 .stat-card {
-  min-height: 104px; padding: 18px 20px 14px; border-radius: 24px;
+  min-height: 104px; padding: 18px 10px 14px; border-radius: 24px;
   background: linear-gradient(160deg, rgba(255,255,255,.7), rgba(246,238,224,.92));
   border: 1px solid rgba(185,141,53,.14);
   box-shadow: 0 10px 24px rgba(88,54,29,.035);
@@ -974,7 +1034,7 @@ figure { margin: 0; }
 }
 .story-card {
   display: grid; align-content: start; gap: 12px;
-  padding: 22px; border-radius: 26px;
+  padding: 22px 10px; border-radius: 26px;
   background: linear-gradient(160deg, rgba(255,255,255,.86), rgba(246,238,224,.88));
   border: 1px solid rgba(111,74,43,.09);
   box-shadow: 0 12px 28px rgba(88,54,29,.04);
@@ -994,6 +1054,13 @@ figure { margin: 0; }
   box-shadow: 0 12px 26px rgba(72,44,22,.09);
 }
 .image-gallery .image-block img { width: 100%; }
+.image-caption {
+  margin: -6px 0 12px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: calc(1rem - 4px);
+  line-height: 1.45;
+}
 .table-shell { overflow: hidden; border-radius: 24px; border: 1px solid rgba(111,74,43,.09); background: rgba(255,255,255,.74); margin: 18px 0; box-shadow: 0 10px 26px rgba(88,54,29,.04); }
 .table-scroll {
   overflow-x: auto; -webkit-overflow-scrolling: touch;
@@ -1078,7 +1145,7 @@ td p { margin: 0; color: inherit; }
   .mobile-jumpbar a { flex: 0 0 auto; color: var(--accent-deep); background: rgba(135,30,42,.06); }
 }
 @media (max-width: 760px) {
-  :root { --content-width: calc(100% - 20px); }
+  :root { --content-width: calc(100% - 8px); }
   .page-shell { padding: 10px 0 48px; }
   .hero { padding: 20px; border-radius: 28px; }
   .hero-nav { display: none; }
@@ -1088,16 +1155,16 @@ td p { margin: 0; color: inherit; }
   .hero-meta-label { font-size: .84rem; }
   .hero-meta li { font-size: .95rem; }
   .section {
-    overflow: visible; padding: 22px 18px; border-radius: 24px;
+    overflow: visible; padding: 22px 12px; border-radius: 24px;
     opacity: 1; transform: none;
   }
   .stats-grid, .story-grid, .image-gallery { grid-template-columns: 1fr; }
   .detail-line { grid-template-columns: 1fr; gap: 1px; margin-bottom: 0; line-height: 1.42; }
-  .stat-card { min-height: 0; padding: 14px 16px 11px; border-radius: 22px; gap: 5px; }
+  .stat-card { min-height: 0; padding: 14px 10px 11px; border-radius: 22px; gap: 5px; }
   .stat-label { font-size: 1.04rem; }
   .stat-value { font-size: 1rem; line-height: 1.58; }
-  .story-card { padding: 18px; border-radius: 22px; }
-  .detail-card { gap: 4px; padding: 18px; border-radius: 22px; }
+  .story-card { padding: 18px 10px; border-radius: 22px; }
+  .detail-card { gap: 4px; padding: 18px 10px; border-radius: 22px; }
   .topic-marker { margin: 2px 0 12px; font-size: 1rem; line-height: 1.6; }
   .image-gallery { gap: 14px; }
   .image-gallery img { height: auto; max-height: none; }
@@ -1161,7 +1228,7 @@ td p { margin: 0; color: inherit; }
   .catalogue-table tbody { gap: 16px; }
   .catalogue-table tr:not(.platform-row) {
     display: grid; grid-template-columns: 1fr;
-    gap: 10px 14px; padding: 16px; border-radius: 24px;
+    gap: 10px 14px; padding: 16px 10px; border-radius: 24px;
     background: linear-gradient(160deg, rgba(255,255,255,.94), rgba(247,239,226,.88));
   }
   .catalogue-table tr:not(.platform-row) td {
