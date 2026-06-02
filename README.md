@@ -7,6 +7,8 @@
 - 输出完整站点目录，而不是单独一个 HTML 文件
 - 适配移动端阅读
 - 使用固定的故宫视觉模板生成页面
+- 自动为页面写入分享卡片所需的 `meta` 标签
+- 自动附带一张默认分享预览图
 
 ## 输出目录结构
 
@@ -106,6 +108,31 @@ python3 /Users/fushan/.codex/skills/sky-gugong-report-html/scripts/build_gugong_
 - 不能只单独拿走 `index.html`
 - 必须把整个结果目录一起保留，因为 HTML 会通过相对路径引用 `css/`、`js/` 和 `images/`
 
+## 分享卡片规则
+
+生成 HTML 时，脚本会自动在 `head` 中写入分享卡片需要的元标签，包括：
+- `description`
+- `og:title`
+- `og:description`
+- `og:url`
+- `og:image`
+- `twitter:title`
+- `twitter:description`
+- `twitter:image`
+
+当前规则如下：
+- 分享标题：使用 Word 文档标题
+- 分享描述：使用目录概览中的一级目录标题，去掉 `一、二、三…` 这类编号后，用 `、` 拼接
+- 分享图片：使用 skill 自带的默认分享图 `assets/share-default.png`
+
+每次生成时，这张默认图片会自动复制到输出目录：
+
+```text
+images/share-default.png
+```
+
+这样在上传到公网后，别人分享链接时就可以优先显示统一的故宫预览图。
+
 ## 上传到阿里云 OSS
 
 仓库提供 `scripts/upload_to_oss.py`，用于把生成后的完整目录上传到阿里云 OSS，并输出可在浏览器直接打开的 `index.html` 链接。
@@ -156,6 +183,8 @@ python3 scripts/upload_to_oss.py /Users/fushan/Desktop/20260513_report
 ```text
 http://your-report-domain.example.com/20260513_report/index.html?Expires=...
 ```
+
+同时，分享卡片里的 `og:url` 和 `og:image` 也会基于 `public_base_url` 生成绝对公网地址。要让微信、企业微信、飞书等平台稳定抓取到预览图，`public_base_url` 需要配置成实际可访问的公网域名，不能只用本地路径或相对路径。
 
 脚本会输出 `public_url` 和 `final_url`。最终交付必须使用 `final_url`，它会带 `response-content-disposition=inline` 签名参数，确保浏览器直接浏览页面，而不是下载 `index.html`。默认有效期为 `signed_url_expires_days` 配置的天数。当前建议配置为 `3`，表示提交上传后三天内可访问，三天后签名过期。
 

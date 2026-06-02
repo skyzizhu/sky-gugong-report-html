@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import html
 import io
+import json
 import re
 import sys
+import urllib.parse
 import zipfile
 from datetime import datetime
 from dataclasses import dataclass, field
@@ -36,6 +38,8 @@ NS = {
 IMAGE_COMPRESS_THRESHOLD = 400 * 1024
 IMAGE_MAX_SIDE = 2000
 JPEG_QUALITY = 86
+DEFAULT_SHARE_IMAGE_NAME = "share-default.png"
+DEFAULT_OSS_CONFIG = Path(__file__).resolve().parents[1] / "config" / "oss_config.json"
 
 
 def qn(prefix: str, tag: str) -> str:
@@ -65,6 +69,25 @@ def fail(message: str) -> None:
 def safe_name(value: str, fallback: str) -> str:
     cleaned = re.sub(r"[^\w\-.]+", "-", value, flags=re.UNICODE).strip("-")
     return cleaned or fallback
+
+
+def skill_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def default_share_image_asset() -> Path:
+    return skill_root() / "assets" / DEFAULT_SHARE_IMAGE_NAME
+
+
+def public_base_url_from_config(config_path: Path = DEFAULT_OSS_CONFIG) -> str | None:
+    if not config_path.exists():
+        return None
+    try:
+        raw = json.loads(config_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    value = str(raw.get("public_base_url", "")).strip().rstrip("/")
+    return value or None
 
 
 def read_xml(zf: zipfile.ZipFile, name: str) -> ET.Element:
@@ -641,6 +664,29 @@ def render_overview_blocks(blocks: list[Block]) -> str:
 
 
 def render_story_blocks(blocks: list[Block]) -> str:
+    def render_story_group(group: list[Block]) -> str:
+        if not group:
+            return ""
+
+        parts: list[str] = []
+        body_blocks = group
+        first = group[0]
+
+        if first.kind == "paragraph":
+            text = first.text.strip()
+            explicit_title = re.match(r"^(标题|主题)[：:]\s*(.+)$", text)
+            if explicit_title and explicit_title.group(2).strip():
+                parts.append(f"<h4>{html.escape(explicit_title.group(2).strip())}</h4>")
+                body_blocks = group[1:]
+            elif is_implicit_card_heading(group, 0):
+                parts.append(f"<h4>{html.escape(text)}</h4>")
+                body_blocks = group[1:]
+
+        body_html = render_generic_blocks(body_blocks)
+        if body_html:
+            parts.append(body_html)
+        return "\n".join(parts)
+
     groups: list[list[Block]] = []
     current: list[Block] = []
 
@@ -658,14 +704,14 @@ def render_story_blocks(blocks: list[Block]) -> str:
 
     if len(groups) <= 1:
         return '<div class="story-grid">' + (
-            '<article class="story-card">' + render_generic_blocks(blocks) + "</article>"
+            '<article class="story-card">' + render_story_group(blocks) + "</article>"
         ) + "</div>"
 
     rendered: list[str] = []
     for group in groups:
         rendered.append(
             '<article class="story-card">'
-            + render_generic_blocks(group)
+            + render_story_group(group)
             + "</article>"
         )
     return '<div class="story-grid">' + "\n".join(rendered) + "</div>"
@@ -775,7 +821,46 @@ def render_nav(headings: list[tuple[str, str, int]], class_name: str) -> str:
     return f'<nav class="{class_name}" aria-label="目录导航">{links}</nav>'
 
 
-def render_html(title: str, blocks: list[Block]) -> str:
+def share_description(headings: list[tuple[str, str, int]]) -> str:
+    def normalized_heading(text: str) -> str:
+        return re.sub(r"^[一二三四五六七八九十\d]+[、.．]\s*", "", text.strip())
+
+    items = [
+        normalized_heading(text)
+        for _anchor, text, level in headings
+        if level == 2 and normalized_heading(text)
+    ]
+    description = "、".join(items)
+    if len(description) > 120:
+        description = description[:117].rstrip("，、；：,. ") + "..."
+    return description or "故宫风格报告页面"
+
+
+def copy_default_share_image(output_dir: Path) -> str | None:
+    asset = default_share_image_asset()
+    if not asset.exists():
+        return None
+    target = output_dir / "images" / DEFAULT_SHARE_IMAGE_NAME
+    target.write_bytes(asset.read_bytes())
+    return f"images/{DEFAULT_SHARE_IMAGE_NAME}"
+
+
+def public_asset_url(output_dir: Path, relative_path: str) -> str | None:
+    base_url = public_base_url_from_config()
+    if not base_url:
+        return None
+    quoted_parts = [urllib.parse.quote(part) for part in output_dir.name.split("/")]
+    relative_parts = [urllib.parse.quote(part) for part in Path(relative_path).parts]
+    return f"{base_url}/{'/'.join(quoted_parts + relative_parts)}"
+
+
+def render_html(
+    title: str,
+    blocks: list[Block],
+    share_image: str | None = None,
+    share_image_url: str | None = None,
+    share_page_url: str | None = None,
+) -> str:
     headings = collect_headings(blocks)
     nav = render_nav(headings, "hero-nav")
     mobile_nav = render_nav(headings, "mobile-jumpbar")
@@ -786,12 +871,35 @@ def render_html(title: str, blocks: list[Block]) -> str:
     meta_items = "\n".join(f"<li>{html.escape(text)}</li>" for _anchor, text, _ in headings)
     content = render_content(blocks, headings)
     escaped_title = html.escape(title)
+    escaped_description = html.escape(share_description(headings))
+    twitter_card = "summary_large_image" if share_image else "summary"
+    share_meta = ""
+    if share_image_url or share_image:
+        escaped_share_image = html.escape(share_image_url or share_image or "")
+        share_meta = f"""
+    <meta property="og:image" content="{escaped_share_image}" />
+    <meta property="og:image:alt" content="{escaped_title}" />
+    <meta name="twitter:image" content="{escaped_share_image}" />"""
+    page_url_meta = (
+        f'\n    <meta property="og:url" content="{html.escape(share_page_url)}" />'
+        if share_page_url
+        else ""
+    )
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{escaped_title}</title>
+    <meta name="description" content="{escaped_description}" />
+    <meta property="og:title" content="{escaped_title}" />
+    <meta property="og:description" content="{escaped_description}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:site_name" content="故宫博物院" />{page_url_meta}{share_meta}
+    <meta name="twitter:card" content="{twitter_card}" />
+    <meta name="twitter:title" content="{escaped_title}" />
+    <meta name="twitter:description" content="{escaped_description}" />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
@@ -1342,6 +1450,7 @@ def prepare_output(output_dir: Path) -> None:
     (output_dir / "css").mkdir(parents=True, exist_ok=True)
     (output_dir / "js").mkdir(parents=True, exist_ok=True)
     (output_dir / "images").mkdir(parents=True, exist_ok=True)
+    (skill_root() / "assets").mkdir(parents=True, exist_ok=True)
 
 
 def dated_report_dir(base_dir: Path) -> Path:
@@ -1376,8 +1485,12 @@ def build(docx_path: Path, output_dir: Path) -> None:
     if not blocks:
         fail("no content found in docx")
     title, content_blocks = split_title(blocks)
+    share_image = copy_default_share_image(final_output_dir)
+    share_image_url = public_asset_url(final_output_dir, share_image) if share_image else None
+    share_page_url = public_asset_url(final_output_dir, "index.html")
     (final_output_dir / "index.html").write_text(
-        render_html(title, content_blocks), encoding="utf-8"
+        render_html(title, content_blocks, share_image, share_image_url, share_page_url),
+        encoding="utf-8",
     )
     (final_output_dir / "css" / "styles.css").write_text(CSS.strip() + "\n", encoding="utf-8")
     (final_output_dir / "js" / "main.js").write_text(JS.strip() + "\n", encoding="utf-8")
